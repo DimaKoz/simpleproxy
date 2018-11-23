@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/DimaKoz/goproxy" //forked "github.com/elazarl/goproxy"
-	"github.com/DimaKoz/go-socks5"//forked "github.com/armon/go-socks5"
+	"github.com/DimaKoz/go-socks5" //forked "github.com/armon/go-socks5"
+	"github.com/DimaKoz/goproxy"   //forked "github.com/elazarl/goproxy"
+	"github.com/DimaKoz/goproxy/ext/auth"
 	"log"
 	"net/http"
 	"os"
-	"simpleProxy/ext/auth" //"github.com/elazarl/goproxy/ext/auth"
 	"strconv"
 )
 
@@ -46,10 +46,13 @@ func main() {
 	conf.Logger = log.New(os.Stdout, "", log.LstdFlags)
 	server, err := socks5.New(conf)
 	if err != nil {
-		panic(err)
+		fmt.Print(err)
+		return
 	}
-	//curl --socks5 localhost:32947 --proxy-user user1:pass1 binfalse.de
+	//how to send socs5 request: curl --socks5 localhost:32947 --proxy-user user1:pass1 binfalse.de
+	//how to see ports: sudo lsof -iTCP -sTCP:LISTEN -n -P
 	if err := server.ListenAndServe("tcp", /*"127.0.0.1"+*/ ":"+strconv.Itoa(usedSocsPort)); err != nil {
-		panic(err)
+		fmt.Print(err)
+		return
 	}
 }

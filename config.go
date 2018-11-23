@@ -23,6 +23,8 @@ const (
 var port int
 var socsPort int
 var authFile string
+var aFlags arrayFlags
+var authFileFlags arrayFlags
 var credentials map[string]string
 var mutex = &sync.Mutex{}
 
@@ -68,16 +70,14 @@ func hasUser() bool {
 func configIsUserAllowed(userName string, userPass string) bool {
 	var result bool
 	mutex.Lock()
-	if len(credentials) == 0 { //no user
-		result = true
-	} else {
-		storedPass := credentials[userName]
-		if len(storedPass) != 0 {
-			if storedPass == userPass {
-				result = true
-			}
+
+	storedPass := credentials[userName]
+	if len(storedPass) != 0 {
+		if storedPass == userPass {
+			result = true
 		}
 	}
+
 	mutex.Unlock()
 	return result
 }
@@ -89,8 +89,6 @@ func (i *arrayFlags) Set(value string) error {
 
 func initConfig() error {
 
-	var aFlags arrayFlags
-	var authFileFlags arrayFlags
 
 	if flag.Lookup(flagNameA) == nil {
 		flag.Var(&aFlags, flagNameA, "HTTP basic auth username and password, for example user:password, for multiple users just repeat -a parameters ,such as: -a user1:password1 -a user2:password2")
@@ -116,6 +114,10 @@ func initConfig() error {
 	if errPort != nil {
 		return errPort
 	}
+	errPort = checkSocsHttpPortsEqual()
+	if errPort != nil {
+		return errPort
+	}
 
 	credentials = make(map[string]string)
 	fillCredentials(credentials, &aFlags)
@@ -128,6 +130,14 @@ func initConfig() error {
 		if authFileFlags != nil {
 			fillCredentials(credentials, &authFileFlags)
 		}
+	}
+	return nil
+}
+
+func checkSocsHttpPortsEqual() error {
+	if port == socsPort {
+		errMessage := fmt.Sprintf("HTTP port and SOCS5 port cannot be equal to each other\n")
+		return errors.New(errMessage)
 	}
 	return nil
 }

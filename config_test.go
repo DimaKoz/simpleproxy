@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/DimaKoz/go-socks5"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -59,10 +61,8 @@ func TestGetArrayFlagsFromFile(t *testing.T) {
 }
 
 func TestFillCredentialsFromFile(t *testing.T) {
-	//want := "ffds:dddd, user2:pass2, user3:pass3, baduser, user4:, user5:awesome, :user4:"
 	fileName := "test_auth.txt"
 	as, _ := getArrayFlagsFromFile(fileName)
-	//as := arrayFlags{"abc", "abc1", "abc2"}
 	credentialsWait := make(map[string]string)
 	credentialsWait["ffds"] = "dddd"
 	credentialsWait["user2"] = "pass2"
@@ -139,6 +139,31 @@ func TestFillCredentialsBadPass(t *testing.T) {
 	equalsCredentials(t, credentialsTestResult, credentialsWait)
 }
 
+func TestCopyCredentials(t *testing.T) {
+	cleanAfterInit()
+	as := arrayFlags{"user1:pass1"}
+	credentialsWait := make(map[string]string)
+	credentialsWait["user1"] = "pass1"
+	credentialsTestResult := make(map[string]string)
+	fillCredentials(credentialsTestResult, &as)
+	credentials = credentialsTestResult
+	testCredentials := socks5.StaticCredentials{}
+	copyCredentials(testCredentials)
+	equalsCredentials(t, testCredentials, credentialsWait)
+	cleanAfterInit()
+}
+
+func TestCopyEmptyCredentials(t *testing.T) {
+	cleanAfterInit()
+	credentialsWait := make(map[string]string)
+	credentialsTestResult := make(map[string]string)
+	credentials = credentialsTestResult
+	testCredentials := socks5.StaticCredentials{}
+	copyCredentials(testCredentials)
+	equalsCredentials(t, testCredentials, credentialsWait)
+	cleanAfterInit()
+}
+
 func equalsCredentials(t *testing.T, result map[string]string, wait map[string]string) {
 	eq := reflect.DeepEqual(wait, result)
 	if !eq {
@@ -153,15 +178,22 @@ func TestConfigGetPort(t *testing.T) {
 	}
 }
 
-func TestConfigIsUserAllowed(t *testing.T) {
+func TestConfigGetSocsPort(t *testing.T) {
+	socsPort = 2001
+	if configGetSocsPort() != 2001 {
+		t.Errorf("#: port(%d); want %d", configGetSocsPort(), port)
+	}
+}
 
+func TestConfigIsUserAllowed(t *testing.T) {
+	cleanAfterInit();
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
 	expectedUsers := []string{"eww", "222", "user3"}
 	expectedPasswords := []string{"www", "3333", "pass3"}
 
-	os.Args = []string{"", "-a=eww:www", "-a=222:3333", "-auth-file=test_auth.txt"}
+	os.Args = []string{"", "-a=eww:www", "-a=222:3333", "-auth-file=test_auth.txt", "-" + flagNamePort + "=" + strconv.Itoa(defaultFlagPortValue), "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)}
 
 	_ = initConfig();
 	for i := 0; i < len(expectedUsers) && i < len(expectedPasswords); i++ {
@@ -172,6 +204,22 @@ func TestConfigIsUserAllowed(t *testing.T) {
 		}
 	}
 	cleanAfterInit()
+	os.Args = oldArgs
+	_ = initConfig();
+}
+
+func TestConfigHasUser(t *testing.T) {
+
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{"", "-a=eww:www", "-a=222:3333", "-auth-file=test_auth.txt", "-" + flagNamePort + "=" + strconv.Itoa(defaultFlagPortValue), "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)}
+
+	_ = initConfig();
+	if !hasUser() {
+		t.Errorf("Test failed, expected hasUser() == true")
+	}
+	cleanAfterInit()
 
 }
 
@@ -180,17 +228,48 @@ func TestConfigCheckWrongPort(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
-	os.Args = []string{"", "-port=65536",}
-
-	err := initConfig();
-	if err == nil {
-		t.Errorf("Test failed, expected a non-nil error:")
-	} else {
-		fmt.Print(err)
+	initialArgs := [][]string{
+		{"", "-" + flagNameSocsPort + "=65536", "-" + flagNamePort + "=" + strconv.Itoa(defaultFlagPortValue),},
+		{"", "-" + flagNameSocsPort + "=-1", "-" + flagNamePort + "=" + strconv.Itoa(defaultFlagPortValue)},
+		{"", "-" + flagNamePort + "=65536", "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)},
+		{"", "-" + flagNamePort + "=-1", "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)},
 	}
 
-	os.Args = []string{"", "-port=-1",}
+	expectedErrorMessage := []string{"TCP port must be in the range 1 - 65535,  the port[65536] is wrong\n",
+		"TCP port must be in the range 1 - 65535,  the port[-1] is wrong\n",
+		"TCP port must be in the range 1 - 65535,  the port[65536] is wrong\n",
+		"TCP port must be in the range 1 - 65535,  the port[-1] is wrong\n",
+	}
 
+	for i := 0; i < len(initialArgs); i++ {
+		os.Args = initialArgs[i]
+		err := initConfig();
+		if err == nil || err.Error() != expectedErrorMessage[i] {
+			t.Errorf("Test failed, expected [%s], got[%s], for args[%s] ", expectedErrorMessage[i], err, initialArgs[i])
+		} else {
+			fmt.Print(err)
+		}
+	}
+
+	cleanAfterInit();
+	os.Args = []string{"", "-" + flagNamePort + "=65535", "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)}
+
+	err := initConfig();
+	if err != nil {
+		msg := fmt.Sprintf("Test failed, error [%s]", err)
+		t.Errorf(msg)
+	}
+	cleanAfterInit();
+	os.Args = []string{"", "-" + flagNamePort + "=1", "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)}
+
+	err = initConfig();
+	if err != nil {
+		msg := fmt.Sprintf("Test failed, error [%s]", err)
+		t.Errorf(msg)
+	}
+
+	cleanAfterInit();
+	os.Args = []string{"", "-" + flagNamePort + "=1", "-" + flagNameSocsPort + "=1"}
 	err = initConfig();
 	if err == nil {
 		t.Errorf("Test failed, expected a non-nil error")
@@ -198,30 +277,11 @@ func TestConfigCheckWrongPort(t *testing.T) {
 		fmt.Print(err)
 	}
 
-	os.Args = []string{"", "-port=65535",}
-
-	err = initConfig();
-	cleanAfterInit();
-	credentials = nil
-	if err != nil {
-		msg := fmt.Sprintf("Test failed, error [%s]",err)
-		t.Errorf(msg)
-	}
-
-	os.Args = []string{"", "-port=1",}
-
-	err = initConfig();
-	cleanAfterInit();
-	credentials = nil
-	authFile = ""
-	if err != nil {
-		msg := fmt.Sprintf("Test failed, error [%s]",err)
-		t.Errorf(msg)
-	}
-
 }
 
 func cleanAfterInit() {
 	credentials = nil
 	authFile = ""
+	socsPort = 0
+	port = 0
 }
