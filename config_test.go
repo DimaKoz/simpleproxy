@@ -148,8 +148,8 @@ func equalsCredentials(t *testing.T, result map[string]string, wait map[string]s
 
 func TestConfigGetPort(t *testing.T) {
 	port = 2000
-	if configGetPort() != 2000 {
-		t.Errorf("#: port(%d); want %d", configGetPort(), port)
+	if configGetHttpPort() != 2000 {
+		t.Errorf("#: port(%d); want %d", configGetHttpPort(), port)
 	}
 }
 

@@ -12,13 +12,16 @@ import (
 )
 
 const (
-	flagNameA            = "a"
-	flagNamePort         = "port"
-	flagNameAuthFile     = "auth-file"
-	defaultFlagPortValue = 32946
+	flagNameA                = "a"
+	flagNamePort             = "port"
+	flagNameSocsPort         = "socs-port"
+	flagNameAuthFile         = "auth-file"
+	defaultFlagPortValue     = 32946
+	defaultFlagSocsPortValue = 32947
 )
 
 var port int
+var socsPort int
 var authFile string
 var credentials map[string]string
 var mutex = &sync.Mutex{}
@@ -46,8 +49,12 @@ func (i *arrayFlags) String() string {
 	return b.String()
 }
 
-func configGetPort() int {
+func configGetHttpPort() int {
 	return port
+}
+
+func configGetSocsPort() int {
+	return socsPort
 }
 
 func hasUser() bool {
@@ -91,15 +98,23 @@ func initConfig() error {
 	if flag.Lookup(flagNamePort) == nil {
 		flag.IntVar(&port, flagNamePort, defaultFlagPortValue, "Provide a port to connect to")
 	}
+	if flag.Lookup(flagNameSocsPort) == nil {
+		flag.IntVar(&socsPort, flagNameSocsPort, defaultFlagSocsPortValue, "Provide a port to connect to")
+	}
 	if flag.Lookup(flagNameAuthFile) == nil {
 		flag.StringVar(&authFile, flagNameAuthFile, "", "A path of HTTP basic auth file,\"username:password\" on each line in a file, the file contains, for example:\n user1:pass1 \n user2:pass2 \n userN:passN")
 	}
 
 	flag.Parse()
 
-	if port > 65535 || port < 1 {
-		errMessage := fmt.Sprintf("TCP port must be in the range 1 - 65535,  the port[%d] is wrong\n", port)
-		return errors.New(errMessage)
+	var errPort error
+	errPort = checkPort(port)
+	if errPort != nil {
+		return errPort
+	}
+	errPort = checkPort(socsPort)
+	if errPort != nil {
+		return errPort
 	}
 
 	credentials = make(map[string]string)
@@ -117,6 +132,13 @@ func initConfig() error {
 	return nil
 }
 
+func checkPort(port int) error {
+	if port > 65535 || port < 1 {
+		errMessage := fmt.Sprintf("TCP port must be in the range 1 - 65535,  the port[%d] is wrong\n", port)
+		return errors.New(errMessage)
+	}
+	return nil
+}
 
 func getArrayFlagsFromFile(pPath string) (arrayFlags, error) {
 	file, err := os.Open(pPath)
@@ -154,4 +176,22 @@ func fillCredentials(pCredentials map[string]string, aFlags *arrayFlags) {
 		}
 
 	}
+}
+
+func copyCredentials(pCopyCredentials map[string]string) {
+	mutex.Lock()
+	if len(credentials) == 0 { //no user
+		mutex.Unlock()
+		return
+	}
+
+	for key, value := range credentials {
+		newValue := make([]byte, len(value))
+		newKey := make([]byte, len(key))
+		copy(newKey, key)
+		copy(newValue, value)
+		pCopyCredentials[string(newKey)] = string(newValue)
+	}
+	mutex.Unlock()
+	return
 }
