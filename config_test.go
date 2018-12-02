@@ -186,7 +186,7 @@ func TestConfigGetSocsPort(t *testing.T) {
 }
 
 func TestConfigIsUserAllowed(t *testing.T) {
-	cleanAfterInit();
+	cleanAfterInit()
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
@@ -195,7 +195,7 @@ func TestConfigIsUserAllowed(t *testing.T) {
 
 	os.Args = []string{"", "-a=eww:www", "-a=222:3333", "-auth-file=test_auth.txt", "-" + flagNamePort + "=" + strconv.Itoa(defaultFlagPortValue), "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)}
 
-	_ = initConfig();
+	_ = initConfig()
 	for i := 0; i < len(expectedUsers) && i < len(expectedPasswords); i++ {
 
 		isAllowedUser := configIsUserAllowed(expectedUsers[i], expectedPasswords[i])
@@ -205,7 +205,7 @@ func TestConfigIsUserAllowed(t *testing.T) {
 	}
 	cleanAfterInit()
 	os.Args = oldArgs
-	_ = initConfig();
+	_ = initConfig()
 }
 
 func TestConfigHasUser(t *testing.T) {
@@ -215,7 +215,7 @@ func TestConfigHasUser(t *testing.T) {
 
 	os.Args = []string{"", "-a=eww:www", "-a=222:3333", "-auth-file=test_auth.txt", "-" + flagNamePort + "=" + strconv.Itoa(defaultFlagPortValue), "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)}
 
-	_ = initConfig();
+	_ = initConfig()
 	if !hasUser() {
 		t.Errorf("Test failed, expected hasUser() == true")
 	}
@@ -229,7 +229,7 @@ func TestConfigCheckWrongPort(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	initialArgs := [][]string{
-		{"", "-" + flagNameSocsPort + "=65536", "-" + flagNamePort + "=" + strconv.Itoa(defaultFlagPortValue),},
+		{"", "-" + flagNameSocsPort + "=65536", "-" + flagNamePort + "=" + strconv.Itoa(defaultFlagPortValue)},
 		{"", "-" + flagNameSocsPort + "=-1", "-" + flagNamePort + "=" + strconv.Itoa(defaultFlagPortValue)},
 		{"", "-" + flagNamePort + "=65536", "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)},
 		{"", "-" + flagNamePort + "=-1", "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)},
@@ -243,7 +243,7 @@ func TestConfigCheckWrongPort(t *testing.T) {
 
 	for i := 0; i < len(initialArgs); i++ {
 		os.Args = initialArgs[i]
-		err := initConfig();
+		err := initConfig()
 		if err == nil || err.Error() != expectedErrorMessage[i] {
 			t.Errorf("Test failed, expected [%s], got[%s], for args[%s] ", expectedErrorMessage[i], err, initialArgs[i])
 		} else {
@@ -251,26 +251,26 @@ func TestConfigCheckWrongPort(t *testing.T) {
 		}
 	}
 
-	cleanAfterInit();
+	cleanAfterInit()
 	os.Args = []string{"", "-" + flagNamePort + "=65535", "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)}
 
-	err := initConfig();
+	err := initConfig()
 	if err != nil {
 		msg := fmt.Sprintf("Test failed, error [%s]", err)
 		t.Errorf(msg)
 	}
-	cleanAfterInit();
+	cleanAfterInit()
 	os.Args = []string{"", "-" + flagNamePort + "=1", "-" + flagNameSocsPort + "=" + strconv.Itoa(defaultFlagSocsPortValue)}
 
-	err = initConfig();
+	err = initConfig()
 	if err != nil {
 		msg := fmt.Sprintf("Test failed, error [%s]", err)
 		t.Errorf(msg)
 	}
 
-	cleanAfterInit();
+	cleanAfterInit()
 	os.Args = []string{"", "-" + flagNamePort + "=1", "-" + flagNameSocsPort + "=1"}
-	err = initConfig();
+	err = initConfig()
 	if err == nil {
 		t.Errorf("Test failed, expected a non-nil error")
 	} else {

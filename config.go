@@ -89,7 +89,6 @@ func (i *arrayFlags) Set(value string) error {
 
 func initConfig() error {
 
-
 	if flag.Lookup(flagNameA) == nil {
 		flag.Var(&aFlags, flagNameA, "HTTP basic auth username and password, for example user:password, for multiple users just repeat -a parameters ,such as: -a user1:password1 -a user2:password2")
 	}

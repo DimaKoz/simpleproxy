@@ -51,7 +51,7 @@ func main() {
 	}
 	//how to send socs5 request: curl --socks5 localhost:32947 --proxy-user user1:pass1 binfalse.de
 	//how to see ports: sudo lsof -iTCP -sTCP:LISTEN -n -P
-	if err := server.ListenAndServe("tcp", /*"127.0.0.1"+*/ ":"+strconv.Itoa(usedSocsPort)); err != nil {
+	if err := server.ListenAndServe("tcp" /*"127.0.0.1"+*/, ":"+strconv.Itoa(usedSocsPort)); err != nil {
 		fmt.Print(err)
 		return
 	}
